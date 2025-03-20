@@ -4,8 +4,13 @@ variable "application_region" {
   default     = "us-east-1"
 }
 
-variable "acountId" {
+variable "account_id" {
   description = "The AWS account ID"
+  type        = string
+}
+
+variable "lab_role" {
+  description = "The Lab role provided by AWS"
   type        = string
 }
 

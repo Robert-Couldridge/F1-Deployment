@@ -9,61 +9,8 @@ terraform {
 
 provider "aws" {
   region                   = var.application_region
-  shared_credentials_files = [".aws/credentials.txt"]
+  shared_credentials_files = [".aws/credentials"]
   profile                  = "default"
-}
-
-# IAM role creation (may not work in lab)
-
-resource "aws_iam_role" "lambda_role" {
-  name               = "terraform_aws_lambda_role"
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": "sts:AssumeRole",
-      "Principal": {
-        "Service": "lambda.amazonaws.com"
-      },
-      "Effect": "Allow",
-      "Sid": ""
-    }
-  ]
-}
-EOF
-}
-
-# IAM policy for logging from a lambda
-
-resource "aws_iam_policy" "iam_policy_for_lambda" {
-
-  name        = "aws_iam_policy_for_terraform_aws_lambda_role"
-  path        = "/"
-  description = "AWS IAM Policy for managing aws lambda role"
-  policy      = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": [
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents"
-      ],
-      "Resource": "arn:aws:logs:*:*:*",
-      "Effect": "Allow"
-    }
-  ]
-}
-EOF
-}
-
-# Policy Attachment on the role.
-
-resource "aws_iam_role_policy_attachment" "attach_iam_policy_to_iam_role" {
-  role       = aws_iam_role.lambda_role.name
-  policy_arn = aws_iam_policy.iam_policy_for_lambda.arn
 }
 
 # Generates an archive from content, a file, or a directory of files.
@@ -76,14 +23,13 @@ data "archive_file" "zip_the_python_code" {
 
 # Create a lambda function
 # In terraform ${path.module} is the current directory.
-
 resource "aws_lambda_function" "application_lambda_func" {
   filename      = "${path.module}/python/deployment-package.zip"
   function_name = var.lambda_function_name
-  role          = aws_iam_role.lambda_role.arn
+  role          = var.lab_role
   handler       = "main.lambda_handler"
   runtime       = "python3.8"
-  depends_on    = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
+  depends_on = [aws_cloudwatch_log_group.application_cloudwatch_log_group]
 }
 
 # Create cloudwatch log group
@@ -130,7 +76,7 @@ resource "aws_lambda_permission" "apigw_lambda" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.application_lambda_func.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "arn:aws:execute-api:${var.application_region}:${var.acountId}:${aws_api_gateway_rest_api.application_api.id}/*/${aws_api_gateway_method.application_api_method.http_method}${aws_api_gateway_resource.application_api_resource.path}"
+  source_arn    = "arn:aws:execute-api:${var.application_region}:${var.account_id}:${aws_api_gateway_rest_api.application_api.id}/*/${aws_api_gateway_method.application_api_method.http_method}${aws_api_gateway_resource.application_api_resource.path}"
 }
 
 # Deployment
@@ -138,9 +84,9 @@ resource "aws_lambda_permission" "apigw_lambda" {
 resource "aws_api_gateway_deployment" "application_api_deployment" {
   rest_api_id = aws_api_gateway_rest_api.application_api.id
 
-  triggers = {
-    redeployment = sha1(jsondecode(aws_api_gateway_rest_api.application_api.body))
-  }
+  # triggers = {
+  #   redeployment = sha1(jsondecode(aws_api_gateway_rest_api.application_api.body))
+  # }
 
   lifecycle {
     create_before_destroy = true

@@ -13,7 +13,7 @@ till one car overtakes another
     ```
 2. Populate the `accountId` variable
     - In the file `terraform.tfvars` put in your account ID, You can find it by clicking in the top right corner of the AWS console
-3. Generate and populate the `credentials.txt` file and place it in the `.aws/` directory
+3. Generate and populate the `credentials` file and place it in the `.aws/` directory
 
 #### Useful Terraform Commands
 - `terraform init` , intialises terraform, run this when you first clone the 
