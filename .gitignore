@@ -11,3 +11,4 @@
 
 #credentials files
 credentials
+terraform.tfvars
