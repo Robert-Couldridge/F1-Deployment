@@ -9,8 +9,8 @@ terraform {
 
 provider "aws" {
   region                   = var.application_region
-  access_key = var.accessKey
-  secret_key = var.secretKey
+  shared_credentials_files = [".aws/credentials.txt"]
+  profile                  = "default"
 }
 
 # IAM role creation (may not work in lab)
@@ -88,8 +88,8 @@ resource "aws_lambda_function" "application_lambda_func" {
 
 # Create cloudwatch log group
 
-resource "aws_cloudwatch_log_group" "name" {
-  name = "/aws/lambda/${var.lambda_function_name}"
+resource "aws_cloudwatch_log_group" "application_cloudwatch_log_group" {
+  name              = "/aws/lambda/${var.lambda_function_name}"
   retention_in_days = 14
 }
 
@@ -101,7 +101,7 @@ resource "aws_api_gateway_rest_api" "application_api" {
 
 resource "aws_api_gateway_resource" "application_api_resource" {
   rest_api_id = aws_api_gateway_rest_api.application_api.id
-  parent_id   = aws_api_gateway_resource.application_api_resource.id
+  parent_id   = aws_api_gateway_rest_api.application_api.root_resource_id
   path_part   = var.endpoint_path
 }
 

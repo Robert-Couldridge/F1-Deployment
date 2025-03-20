@@ -5,20 +5,15 @@ This Terraform codebase creates an AWS application to predict the number of laps
 till one car overtakes another
 
 ### Setup
-1. Export AWS Environment Variables
-
-    ```
-    export AWS_ACCESS_KEY_ID=your_key_here
-    export AWS_SECRET_ACCESS_KEY=your_secret_here
-    ```
-2. Initialise Terraform
+1. Initialise Terraform
     - *Make sure you're in the root directory*
 
     ```
     terraform init
     ```
-3. Populate the `accountId`, `accessKey` and `secretKey` variables
+2. Populate the `accountId` variable
     - In the file `terraform.tfvars` put in your account ID, You can find it by clicking in the top right corner of the AWS console
+3. Generate and populate the `credentials.txt` file and place it in the `.aws/` directory
 
 #### Useful Terraform Commands
 - `terraform init` , intialises terraform, run this when you first clone the 

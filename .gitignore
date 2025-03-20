@@ -8,3 +8,6 @@
 
 # Zip files
 *.zip
+
+#credentials files
+credentials.txt
