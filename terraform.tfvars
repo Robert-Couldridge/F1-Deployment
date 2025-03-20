@@ -1,3 +1,0 @@
-acountId = ""
-accessKey = ""
-secretKey = ""
