@@ -9,7 +9,8 @@ terraform {
 
 provider "aws" {
   region                   = var.application_region
-  shared_credentials_files = ""
+  access_key = var.accessKey
+  secret_key = var.secretKey
 }
 
 # IAM role creation (may not work in lab)
@@ -89,6 +90,7 @@ resource "aws_lambda_function" "application_lambda_func" {
 
 resource "aws_cloudwatch_log_group" "name" {
   name = "/aws/lambda/${var.lambda_function_name}"
+  retention_in_days = 14
 }
 
 # Create API gateway

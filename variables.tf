@@ -9,6 +9,16 @@ variable "acountId" {
   type        = string
 }
 
+variable "accessKey" {
+  description = "The AWS access key"
+  type = string
+}
+
+variable "secretKey" {
+  description = "The AWS secret key"
+  type = string
+}
+
 variable "lambda_function_name" {
   description = "The name of the lambda function"
   type        = string

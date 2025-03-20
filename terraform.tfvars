@@ -1,1 +1,3 @@
-acountId = "value"
+acountId = ""
+accessKey = ""
+secretKey = ""
