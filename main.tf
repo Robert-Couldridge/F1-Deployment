@@ -13,6 +13,16 @@ provider "aws" {
   profile                  = "default"
 }
 
+resource "aws_sns_topic" "sns_topic" {
+  name = "overtake-prediction"
+}
+
+resource "aws_sns_topic_subscription" "email_subscription" {
+  topic_arn = aws_sns_topic.sns_topic.arn
+  protocol  = "email"
+  endpoint  = var.destination_email_address
+}
+
 # Generates an archive from content, a file, or a directory of files.
 
 data "archive_file" "zip_the_python_code" {
@@ -86,10 +96,10 @@ resource "aws_api_gateway_integration" "application_integration" {
     }
     EOF
   }
-  depends_on = [ aws_api_gateway_resource.application_api_resource ]
+  depends_on = [aws_api_gateway_resource.application_api_resource]
 }
 
-resource "aws_api_gateway_method_response" "application_api_method_response"{
+resource "aws_api_gateway_method_response" "application_api_method_response" {
   rest_api_id = aws_api_gateway_rest_api.application_api.id
   resource_id = aws_api_gateway_resource.application_api_resource.id
   http_method = aws_api_gateway_method.application_api_post_method.http_method
@@ -103,7 +113,7 @@ resource "aws_api_gateway_method_response" "application_api_method_response"{
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = true,
     "method.response.header.Access-Control-Allow-Methods" = true,
-    "method.response.header.Access-Control-Allow-Origin" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
   }
 }
 
@@ -116,17 +126,17 @@ resource "aws_api_gateway_integration_response" "application_integration_respons
   response_templates = {
     "application/json" = ""
   }
-  
+
   // cors
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" =  "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
     "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS,POST,PUT'",
-    "method.response.header.Access-Control-Allow-Origin" = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
   }
 
-  depends_on = [ 
-  aws_api_gateway_method.application_api_post_method,
-  aws_api_gateway_integration.application_integration
+  depends_on = [
+    aws_api_gateway_method.application_api_post_method,
+    aws_api_gateway_integration.application_integration
   ]
 }
 
@@ -161,7 +171,7 @@ resource "aws_api_gateway_stage" "application_api_stage" {
   rest_api_id   = aws_api_gateway_rest_api.application_api.id
   stage_name    = "dev"
 
-  depends_on = [ aws_api_gateway_deployment.application_api_deployment ]
+  depends_on = [aws_api_gateway_deployment.application_api_deployment]
 }
 
 

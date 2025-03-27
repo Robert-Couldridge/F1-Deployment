@@ -26,3 +26,8 @@ variable "endpoint_path" {
   type        = string
   default     = "overtake_prediction"
 }
+
+variable "destination_email_address" {
+  description = "The email address the overtake predictions should be sent to"
+  type        = string
+}

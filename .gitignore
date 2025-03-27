@@ -12,3 +12,4 @@
 #credentials files
 credentials
 terraform.tfvars
+variables.py

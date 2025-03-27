@@ -11,9 +11,18 @@ till one car overtakes another
     ```
     terraform init
     ```
-2. Populate the `accountId` variable
-    - In the file `terraform.tfvars` put in your account ID, You can find it by clicking in the top right corner of the AWS console
+2. Create a `terraform.tfvars` file in the root directory and populate it with the following information
+    ```
+    account_id                = "<AWS ACCOUNT NUMBER>"
+    lab_role                  = "<AWS ROLE ARN>"
+    destination_email_address = "<EMAIL ADDRESS TO DELIVER PREDICTIONS TO>"
+    ```
 3. Generate and populate the `credentials` file and place it in the `.aws/` directory
+4. Create a `variables.py` file in the `/python` directory and populate it with the following information
+    ```
+    REGION = "<AWS DEPLOYMENT REGION>"
+    ACCOUNTNUMBER = "<AWS ACCOUNT NUMBER>"
+    ```
 
 #### Useful Terraform Commands
 - `terraform init` , intialises terraform, run this when you first clone the 
