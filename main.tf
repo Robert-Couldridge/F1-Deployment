@@ -63,6 +63,10 @@ resource "aws_api_gateway_method" "application_api_post_method" {
   resource_id   = aws_api_gateway_resource.application_api_resource.id
   http_method   = "POST"
   authorization = "NONE"
+
+  request_parameters = {
+    "method.request.header.Content-Type" = true
+  }
 }
 
 # Create API gateway and Lambda integration
@@ -75,6 +79,13 @@ resource "aws_api_gateway_integration" "application_integration" {
   type                    = "AWS_PROXY"
   uri                     = aws_lambda_function.application_lambda_func.invoke_arn
 
+  request_templates = {
+    "application/json" = <<EOF
+    {
+      "body": "$input.body"
+    }
+    EOF
+  }
   depends_on = [ aws_api_gateway_resource.application_api_resource ]
 }
 
@@ -83,6 +94,10 @@ resource "aws_api_gateway_method_response" "application_api_method_response"{
   resource_id = aws_api_gateway_resource.application_api_resource.id
   http_method = aws_api_gateway_method.application_api_post_method.http_method
   status_code = "200"
+
+  response_models = {
+    "application/json" = "Empty"
+  }
 
   // cors 
   response_parameters = {
@@ -98,6 +113,10 @@ resource "aws_api_gateway_integration_response" "application_integration_respons
   http_method = aws_api_gateway_method.application_api_post_method.http_method
   status_code = aws_api_gateway_method_response.application_api_method_response.status_code
 
+  response_templates = {
+    "application/json" = ""
+  }
+  
   // cors
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" =  "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
