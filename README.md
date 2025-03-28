@@ -23,6 +23,28 @@ till one car overtakes another
     REGION = "<AWS DEPLOYMENT REGION>"
     ACCOUNTNUMBER = "<AWS ACCOUNT NUMBER>"
     ```
+5. Run `terraform apply` to build the application and generate your endpoint link
+    ```
+    endpoint_url = "https://u8wq4hooka.execute-api.us-east-1.amazonaws.com/dev/overtake_prediction"
+    ```
+6. Make a `POST` request to the provided endpoint with the body in the following JSON format
+    ```
+    {
+        "time_difference_between_cars": 5,
+        "leading_car": {
+            "driver_name": "Lewis Hamilton",
+            "last_5_laptimes": [91, 91, 92, 94, 92],
+            "number_of_laps_on_tyres": 34,
+            "tyre_compund": "soft"
+        },
+        "trailing_car": {
+            "driver_name": "Fernando Alonso",
+            "last_5_laptimes": [90, 90, 91, 92, 90],
+            "number_of_laps_on_tyres": 18,
+            "tyre_compund": "hard"
+        }
+    }
+    ```
 
 #### Useful Terraform Commands
 - `terraform init` , intialises terraform, run this when you first clone the 

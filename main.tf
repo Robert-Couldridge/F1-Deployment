@@ -13,6 +13,7 @@ provider "aws" {
   profile                  = "default"
 }
 
+# Create SNS topic and subscribe desired email address
 resource "aws_sns_topic" "sns_topic" {
   name = "overtake-prediction"
 }
@@ -23,7 +24,46 @@ resource "aws_sns_topic_subscription" "email_subscription" {
   endpoint  = var.destination_email_address
 }
 
-# Generates an archive from content, a file, or a directory of files.
+# Create and populate DyanamoDB table
+
+resource "aws_dynamodb_table" "application_dynamo_db_table" {
+  name         = "Tyre-Wear-Table"
+  billing_mode = "PAY_PER_REQUEST"
+  attribute {
+    name = "Lap"
+    type = "N"
+  }
+
+  hash_key = "Lap"
+}
+
+locals {
+  tyre_wear_data = csvdecode(file("data/tyre_wear_data.csv"))
+}
+
+resource "aws_dynamodb_table_item" "tyre_wear_information" {
+  for_each = { for row in local.tyre_wear_data : row.lap => row }
+
+  table_name = aws_dynamodb_table.application_dynamo_db_table.name
+  hash_key   = aws_dynamodb_table.application_dynamo_db_table.hash_key
+
+  item = <<EOF
+  {
+    "Lap": {"N": "${each.value.lap}"},
+    "Soft": {"N": "${each.value.soft}"},
+    "Medium": {"N": "${each.value.medium}"},
+    "Hard": {"N": "${each.value.hard}"}
+  }
+  EOF
+
+  lifecycle {
+    ignore_changes = [item]
+  }
+}
+
+
+
+# Generates archive for python code
 
 data "archive_file" "zip_the_python_code" {
   type        = "zip"
