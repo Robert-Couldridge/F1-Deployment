@@ -7,7 +7,9 @@ from variables import ACCOUNTNUMBER, REGION
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-client = boto3.client("sns")
+sns = boto3.client("sns")
+dynamodb = boto3.resource("dynamodb")
+tyre_wear_table = dynamodb.Table("Tyre-Wear-Table")
 
 
 def lambda_handler(event, context):
@@ -19,15 +21,18 @@ def lambda_handler(event, context):
         prediction = predict_overtake(body)
         logger.info("## Prediction: %s", prediction)
 
-        string_prediction = (
-            f'{prediction["trailing_driver"]} will overtake '
-            f'{prediction["leading_driver"]} in {prediction["laps_till_overtake"]} laps'
-        )
+        if prediction:
+            string_prediction = (
+                f'{prediction["trailing_driver"]} will overtake '
+                f'{prediction["leading_driver"]} in {prediction["laps_till_overtake"]} laps'
+            )
+        else:
+            string_prediction = "No overtake likely"
 
         response = {"statusCode": 200, "body": string_prediction}
 
         # publish to sns
-        client.publish(
+        sns.publish(
             TopicArn=f"arn:aws:sns:{REGION}:{ACCOUNTNUMBER}:overtake-prediction",
             Message=string_prediction,
         )
@@ -38,7 +43,7 @@ def lambda_handler(event, context):
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 
 
-def predict_overtake(body: json):
+def predict_overtake(body: dict):
 
     # time difference (in seconds) between cars
     time_difference_between_cars = body["time_difference_between_cars"]
@@ -47,40 +52,122 @@ def predict_overtake(body: json):
     leading_car = body["leading_car"]
     trailing_car = body["trailing_car"]
 
-    leading_car_average_laptime = sum(leading_car["last_5_laptimes"]) / len(
-        leading_car["last_5_laptimes"]
-    )
-    trailing_car_average_laptime = sum(trailing_car["last_5_laptimes"]) / len(
-        trailing_car["last_5_laptimes"]
+    # predict overtake before simiulating tyre wear
+    laps_till_overtake_before_tyre_wear_simulation = predict_laps_till_overtake(
+        leading_car=leading_car,
+        trailing_car=trailing_car,
+        time_difference_between_cars=time_difference_between_cars,
     )
 
-    average_time_gain_per_lap = (
-        leading_car_average_laptime - trailing_car_average_laptime
-    )
-    if average_time_gain_per_lap <= 0:
+    if not laps_till_overtake_before_tyre_wear_simulation:
         return None
-    laps_till_overtake = time_difference_between_cars / average_time_gain_per_lap
+
+    logger.info(
+        "Laps till overtake before tyre wear simulation %i",
+        laps_till_overtake_before_tyre_wear_simulation,
+    )
+
+    # predict overtake whilst simulating tyre wear
+    laps_till_overtake_after_tyre_wear_simulation = simulate_tyre_wear(
+        laps_till_overtake_before_tyre_wear_simulation=laps_till_overtake_before_tyre_wear_simulation,
+        leading_car=leading_car,
+        trailing_car=trailing_car,
+        time_difference_between_cars=time_difference_between_cars,
+    )
+
+    if not laps_till_overtake_after_tyre_wear_simulation:
+        return None
+
+    logger.info(
+        "Laps till overtake after tyre wear simulation %i",
+        laps_till_overtake_after_tyre_wear_simulation,
+    )
+
     return {
-        "laps_till_overtake": laps_till_overtake,
+        "laps_till_overtake": laps_till_overtake_after_tyre_wear_simulation,
         "leading_driver": leading_car["driver_name"],
         "trailing_driver": trailing_car["driver_name"],
     }
 
 
-if __name__ == "__main__":
-    json_body = {
-        "time_difference_between_cars": 10,
-        "leading_car": {
-            "driver_name": "Lewis Hamilton",
-            "last_5_laptimes": [91, 91, 92, 94, 92],
-            "number_of_laps_on_tyres": 34,
-            "tyre_compund": "soft",
-        },
-        "trailing_car": {
-            "driver_name": "Fernando Alonso",
-            "last_5_laptimes": [90, 90, 91, 92, 90],
-            "number_of_laps_on_tyres": 18,
-            "tyre_compund": "hard",
-        },
-    }
-    # print(predict_overtake(body=json_body))
+def simulate_tyre_wear(
+    laps_till_overtake_before_tyre_wear_simulation: int,
+    time_difference_between_cars: int,
+    leading_car: dict,
+    trailing_car: dict,
+):
+    for i in range(1, laps_till_overtake_before_tyre_wear_simulation + 1):
+
+        # calculate leading car tyre wear
+        response = tyre_wear_table.get_item(
+            Key={
+                "lap": leading_car["number_of_laps_on_tyres"] + i,
+            }
+        )
+        item = response.get("Item", {})
+        time_loss_due_to_tyre_wear = int(
+            item.get(leading_car["tyre_compound"], "Tyre Compound Not Found")
+        )
+        leading_car["last_5_laptimes"].append(
+            leading_car["average_lap_time"] + time_loss_due_to_tyre_wear
+        )
+
+        # calculate trailing car tyre wear
+        response = tyre_wear_table.get_item(
+            Key={
+                "lap": trailing_car["number_of_laps_on_tyres"] + i,
+            }
+        )
+        item = response.get("Item", {})
+        time_loss_due_to_tyre_wear = int(
+            item.get(trailing_car["tyre_compound"], "Tyre Compound Not Found")
+        )
+        trailing_car["last_5_laptimes"].append(
+            trailing_car["average_lap_time"] + time_loss_due_to_tyre_wear
+        )
+
+    laps_till_overtake_after_tyre_wear_simulation = predict_laps_till_overtake(
+        leading_car=leading_car,
+        trailing_car=trailing_car,
+        time_difference_between_cars=time_difference_between_cars,
+    )
+
+    logger.info(
+        "Laps till overtake during tyre wear simulation %i",
+        laps_till_overtake_after_tyre_wear_simulation,
+    )
+
+    if (
+        laps_till_overtake_before_tyre_wear_simulation
+        == laps_till_overtake_after_tyre_wear_simulation
+    ):
+        return laps_till_overtake_after_tyre_wear_simulation
+
+    if not laps_till_overtake_after_tyre_wear_simulation:
+        return None
+
+    return simulate_tyre_wear(
+        laps_till_overtake_before_tyre_wear_simulation=laps_till_overtake_after_tyre_wear_simulation,
+        leading_car=leading_car,
+        trailing_car=trailing_car,
+        time_difference_between_cars=time_difference_between_cars,
+    )
+
+
+def predict_laps_till_overtake(
+    leading_car: dict,
+    trailing_car: dict,
+    time_difference_between_cars: int,
+):
+    leading_car["average_lap_time"] = int(
+        sum(leading_car["last_5_laptimes"]) / len(leading_car["last_5_laptimes"])
+    )
+    trailing_car["average_lap_time"] = int(
+        sum(trailing_car["last_5_laptimes"]) / len(trailing_car["last_5_laptimes"])
+    )
+    average_time_gain_per_lap = (
+        leading_car["average_lap_time"] - trailing_car["average_lap_time"]
+    )
+    if average_time_gain_per_lap <= 0:
+        return None
+    return int((time_difference_between_cars / average_time_gain_per_lap))

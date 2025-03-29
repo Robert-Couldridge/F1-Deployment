@@ -30,18 +30,18 @@ till one car overtakes another
 6. Make a `POST` request to the provided endpoint with the body in the following JSON format
     ```
     {
-        "time_difference_between_cars": 5,
+        "time_difference_between_cars": 10,
         "leading_car": {
             "driver_name": "Lewis Hamilton",
             "last_5_laptimes": [91, 91, 92, 94, 92],
-            "number_of_laps_on_tyres": 34,
-            "tyre_compund": "soft"
+            "number_of_laps_on_tyres": 30,
+            "tyre_compound": "hard"
         },
         "trailing_car": {
             "driver_name": "Fernando Alonso",
             "last_5_laptimes": [90, 90, 91, 92, 90],
-            "number_of_laps_on_tyres": 18,
-            "tyre_compund": "hard"
+            "number_of_laps_on_tyres": 10,
+            "tyre_compound": "soft"
         }
     }
     ```

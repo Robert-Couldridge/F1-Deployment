@@ -30,11 +30,11 @@ resource "aws_dynamodb_table" "application_dynamo_db_table" {
   name         = "Tyre-Wear-Table"
   billing_mode = "PAY_PER_REQUEST"
   attribute {
-    name = "Lap"
+    name = "lap"
     type = "N"
   }
 
-  hash_key = "Lap"
+  hash_key = "lap"
 }
 
 locals {
@@ -49,10 +49,10 @@ resource "aws_dynamodb_table_item" "tyre_wear_information" {
 
   item = <<EOF
   {
-    "Lap": {"N": "${each.value.lap}"},
-    "Soft": {"N": "${each.value.soft}"},
-    "Medium": {"N": "${each.value.medium}"},
-    "Hard": {"N": "${each.value.hard}"}
+    "lap": {"N": "${each.value.lap}"},
+    "soft": {"N": "${each.value.soft}"},
+    "medium": {"N": "${each.value.medium}"},
+    "hard": {"N": "${each.value.hard}"}
   }
   EOF
 
