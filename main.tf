@@ -13,56 +13,6 @@ provider "aws" {
   profile                  = "default"
 }
 
-# Create SNS topic and subscribe desired email address
-resource "aws_sns_topic" "sns_topic" {
-  name = "overtake-prediction"
-}
-
-resource "aws_sns_topic_subscription" "email_subscription" {
-  topic_arn = aws_sns_topic.sns_topic.arn
-  protocol  = "email"
-  endpoint  = var.destination_email_address
-}
-
-# Create and populate DyanamoDB table
-
-resource "aws_dynamodb_table" "application_dynamo_db_table" {
-  name         = "Tyre-Wear-Table"
-  billing_mode = "PAY_PER_REQUEST"
-  attribute {
-    name = "lap"
-    type = "N"
-  }
-
-  hash_key = "lap"
-}
-
-locals {
-  tyre_wear_data = csvdecode(file("data/tyre_wear_data.csv"))
-}
-
-resource "aws_dynamodb_table_item" "tyre_wear_information" {
-  for_each = { for row in local.tyre_wear_data : row.lap => row }
-
-  table_name = aws_dynamodb_table.application_dynamo_db_table.name
-  hash_key   = aws_dynamodb_table.application_dynamo_db_table.hash_key
-
-  item = <<EOF
-  {
-    "lap": {"N": "${each.value.lap}"},
-    "soft": {"N": "${each.value.soft}"},
-    "medium": {"N": "${each.value.medium}"},
-    "hard": {"N": "${each.value.hard}"}
-  }
-  EOF
-
-  lifecycle {
-    ignore_changes = [item]
-  }
-}
-
-
-
 # Generates archive for python code
 
 data "archive_file" "zip_the_python_code" {
@@ -79,14 +29,10 @@ resource "aws_lambda_function" "application_lambda_func" {
   role          = var.lab_role
   handler       = "main.lambda_handler"
   runtime       = "python3.8"
-  depends_on    = [aws_cloudwatch_log_group.application_cloudwatch_log_group, data.archive_file.zip_the_python_code]
-}
-
-# Create cloudwatch log group
-
-resource "aws_cloudwatch_log_group" "application_cloudwatch_log_group" {
-  name              = "/aws/lambda/${var.lambda_function_name}"
-  retention_in_days = 14
+  depends_on    = [
+  aws_cloudwatch_log_group.application_cloudwatch_log_group,
+  data.archive_file.zip_the_python_code,
+  ]
 }
 
 # Create API gateway
@@ -100,13 +46,6 @@ resource "aws_api_gateway_resource" "application_api_resource" {
   parent_id   = aws_api_gateway_rest_api.application_api.root_resource_id
   path_part   = var.endpoint_path
 }
-
-# resource "aws_api_gateway_method" "application_api_get_method" {
-#   rest_api_id   = aws_api_gateway_rest_api.application_api.id
-#   resource_id   = aws_api_gateway_resource.application_api_resource.id
-#   http_method   = "GET"
-#   authorization = "NONE"
-# }
 
 resource "aws_api_gateway_method" "application_api_post_method" {
   rest_api_id   = aws_api_gateway_rest_api.application_api.id
